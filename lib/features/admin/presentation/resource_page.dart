@@ -290,12 +290,12 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
   Future<void> _delete(Map<String, dynamic> item) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             const Expanded(child: Text('Hapus data?')),
             IconButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               icon: const Icon(Icons.close_rounded),
               tooltip: 'Tutup',
             ),
@@ -304,10 +304,10 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
         content: const Text('Data yang dihapus tidak dapat dikembalikan.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Batal')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Hapus')),
         ],
       ),
