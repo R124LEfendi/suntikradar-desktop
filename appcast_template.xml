@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>SuntikRadar Desktop Appcast</title>
+        <description>Most recent updates to SuntikRadar Desktop</description>
+        <language>id</language>
+        
+        <item>
+            <!-- Judul update yang akan muncul di pop-up aplikasi -->
+            <title>Pembaruan SuntikRadar Versi 0.1.1</title>
+            
+            <!-- Deskripsi/Changelog menggunakan CDATA (bisa disisipkan tag HTML seperti <ul> atau <b>) -->
+            <description>
+                <![CDATA[
+                    <b>Apa yang baru di rilis ini:</b>
+                    <ul>
+                        <li>Fitur tampilan data menggunakan Card Grid</li>
+                        <li>Perbaikan pada scroll tabel horizontal</li>
+                        <li>Fix layar hitam saat menghapus data (Bug context)</li>
+                        <li>Implementasi sistem Auto-Updater</li>
+                    </ul>
+                ]]>
+            </description>
+            
+            <!-- Tanggal Rilis (Format RFC 2822 standard) -->
+            <pubDate>Wed, 10 Jun 2026 15:00:00 +0700</pubDate>
+            
+            <!-- Versi yang harus sama atau lebih baru dari pubspec.yaml Anda -->
+            <sparkle:version>0.1.1</sparkle:version>
+            <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+            
+            <!-- Link langsung ke file installer SuntikRadar-Setup-v0.1.1.exe yang ada di server Anda -->
+            <enclosure url="https://api.suntikradar.com/downloads/SuntikRadar-Setup-v0.1.1.exe" 
+                       sparkle:version="0.1.1" 
+                       sparkle:os="windows"
+                       type="application/octet-stream" />
+        </item>
+    </channel>
+</rss>
