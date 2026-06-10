@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/page_scaffold.dart';
 
-final profileProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+final profileProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final data = await ref.watch(apiClientProvider).get('/profile');
   return Map<String, dynamic>.from(data as Map);
 });

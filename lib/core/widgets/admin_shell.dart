@@ -22,7 +22,6 @@ class AdminShell extends ConsumerWidget {
         'Data Kendaraan', '/resource/kendaraan', Icons.two_wheeler_rounded),
     _NavSection('Layanan & Akses'),
     _NavItem('Riwayat Pencarian', '/resource/history', Icons.history_rounded),
-    _NavItem('Paket Layanan', '/resource/narasumber', Icons.inventory_rounded),
     _NavItem('Transaksi & Billing', '/resource/transactions',
         Icons.receipt_long_rounded),
     _NavSection('Konfigurasi'),
