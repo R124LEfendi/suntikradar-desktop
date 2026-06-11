@@ -12,12 +12,12 @@ import '../../../core/widgets/responsive_table.dart';
 import '../../../core/widgets/value_reader.dart';
 import 'resource_config.dart';
 
-final adminLookupsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+final adminLookupsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final data = await ref.watch(apiClientProvider).get('/admin/lookups');
   return Map<String, dynamic>.from(data as Map);
 });
 
-final resourceProvider = FutureProvider.family<Map<String, dynamic>,
+final resourceProvider = FutureProvider.autoDispose.family<Map<String, dynamic>,
     ({String key, String q, int page, int perPage})>((ref, args) async {
   final config = resourceConfigs[args.key]!;
   final data = await ref.watch(apiClientProvider).get(
@@ -32,6 +32,12 @@ final resourceProvider = FutureProvider.family<Map<String, dynamic>,
     return {
       'items': [Map<String, dynamic>.from(data as Map)],
       'meta': {'total': 1},
+    };
+  }
+  if (data is List) {
+    return {
+      'items': data,
+      'meta': {'total': data.length},
     };
   }
   return Map<String, dynamic>.from(data as Map);
@@ -284,12 +290,12 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
   Future<void> _delete(Map<String, dynamic> item) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             const Expanded(child: Text('Hapus data?')),
             IconButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               icon: const Icon(Icons.close_rounded),
               tooltip: 'Tutup',
             ),
@@ -298,10 +304,10 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
         content: const Text('Data yang dihapus tidak dapat dikembalikan.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Batal')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Hapus')),
         ],
       ),
@@ -519,25 +525,34 @@ class _ResourceList extends StatelessWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ResponsiveTable(
-              columns: config.columns.map((field) {
-                return ResponsiveTableColumn(
-                  label: field.label,
-                  minWidth: _widthFor(field.key),
-                  value: (row) => readValue(row, field.key),
-                  cell: _cellFor(field, onHistory),
-                );
-              }).toList(),
-              rows: items,
-              actions: (item) => _Actions(
-                config: config,
-                item: item,
-                onEdit: () => onEdit(item),
-                onDelete: () => onDelete(item),
-                onApprove: () => onApprove(item),
-                onCancel: () => onCancel(item),
-              ),
-            ),
+            child: config.useCardLayout
+                ? _ResourceCardGrid(
+                    config: config,
+                    items: items,
+                    onEdit: onEdit,
+                    onDelete: onDelete,
+                    onApprove: onApprove,
+                    onCancel: onCancel,
+                  )
+                : ResponsiveTable(
+                    columns: config.columns.map((field) {
+                      return ResponsiveTableColumn(
+                        label: field.label,
+                        minWidth: _widthFor(field.key),
+                        value: (row) => readValue(row, field.key),
+                        cell: _cellFor(field, onHistory),
+                      );
+                    }).toList(),
+                    rows: items,
+                    actions: (item) => _Actions(
+                      config: config,
+                      item: item,
+                      onEdit: () => onEdit(item),
+                      onDelete: () => onDelete(item),
+                      onApprove: () => onApprove(item),
+                      onCancel: () => onCancel(item),
+                    ),
+                  ),
           ),
           const Divider(height: 1),
           Padding(
@@ -1822,6 +1837,240 @@ class _NopolHistoryDialog extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text('Tutup')),
       ],
+    );
+  }
+}
+
+class _ResourceCardGrid extends StatelessWidget {
+  const _ResourceCardGrid({
+    required this.config,
+    required this.items,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onApprove,
+    required this.onCancel,
+  });
+
+  final ResourceConfig config;
+  final List<Map<String, dynamic>> items;
+  final ValueChanged<Map<String, dynamic>> onEdit;
+  final ValueChanged<Map<String, dynamic>> onDelete;
+  final ValueChanged<Map<String, dynamic>> onApprove;
+  final ValueChanged<Map<String, dynamic>> onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: items.map((item) {
+          return SizedBox(
+            width: 320,
+            child: _ResourceCard(
+              config: config,
+              item: item,
+              onEdit: () => onEdit(item),
+              onDelete: () => onDelete(item),
+              onApprove: () => onApprove(item),
+              onCancel: () => onCancel(item),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _ResourceCard extends StatelessWidget {
+  const _ResourceCard({
+    required this.config,
+    required this.item,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onApprove,
+    required this.onCancel,
+  });
+
+  final ResourceConfig config;
+  final Map<String, dynamic> item;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onApprove;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (config.columns.isEmpty) return const SizedBox();
+    
+    final titleCol = config.columns.first;
+    final otherCols = config.columns.skip(1).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5EAF0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE5EAF0))),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    readValue(item, titleCol.key),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (item['status'] != null) ...[
+                   const SizedBox(width: 8),
+                   _StatusBadge(status: item['status'].toString()),
+                ],
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              children: otherCols.map((col) {
+                if (col.key == 'status') return const SizedBox();
+                
+                var valueStr = readValue(item, col.key);
+                if (col.key.contains('harga') || col.key.contains('price')) {
+                   final numVal = double.tryParse(valueStr);
+                   if (numVal != null) {
+                       valueStr = 'Rp ${numVal.toStringAsFixed(0)}';
+                   }
+                }
+                if (col.key.contains('hari') || col.key.contains('day')) {
+                   valueStr = '$valueStr Hari';
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          col.label,
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          valueStr,
+                          style: const TextStyle(
+                            color: Color(0xFF334155),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (config.canEdit)
+                  TextButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Edit'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF4F46E5),
+                    ),
+                  ),
+                if (config.canDelete) ...[
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Hapus'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFEF4444),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+  final String status;
+  @override
+  Widget build(BuildContext context) {
+    Color bg = const Color(0xFFE2E8F0);
+    Color fg = const Color(0xFF475569);
+    String text = status.toUpperCase();
+
+    if (status.toLowerCase() == 'active' || status.toLowerCase() == 'aktif') {
+      bg = const Color(0xFFDCFCE7);
+      fg = const Color(0xFF16A34A);
+    } else if (status.toLowerCase() == 'pending') {
+      bg = const Color(0xFFFEF9C3);
+      fg = const Color(0xFFCA8A04);
+    } else if (status.toLowerCase() == 'blocked' || status.toLowerCase() == 'inactive') {
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFDC2626);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: fg,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 }

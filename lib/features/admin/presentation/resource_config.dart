@@ -19,6 +19,7 @@ class ResourceConfig {
     this.canCreate = true,
     this.canDelete = true,
     this.canEdit = true,
+    this.useCardLayout = false,
   });
 
   final String key;
@@ -30,6 +31,7 @@ class ResourceConfig {
   final bool canCreate;
   final bool canDelete;
   final bool canEdit;
+  final bool useCardLayout;
 }
 
 const resourceConfigs = <String, ResourceConfig>{
@@ -148,23 +150,23 @@ const resourceConfigs = <String, ResourceConfig>{
       ResourceField('nama_cabang', 'Nama Cabang', required: true),
     ],
   ),
-  'narasumber': ResourceConfig(
-    key: 'narasumber',
-    title: 'Data Narasumber',
-    path: '/admin/narasumber',
-    columns: [
-      ResourceField('name', 'Nama'),
-      ResourceField('phone', 'Telepon'),
-      ResourceField('email', 'Email'),
-      ResourceField('telegram_id', 'Telegram'),
-    ],
-    fields: [
-      ResourceField('name', 'Nama', required: true),
-      ResourceField('phone', 'Telepon', required: true),
-      ResourceField('email', 'Email', required: true),
-      ResourceField('telegram_id', 'Telegram ID'),
-    ],
-  ),
+  //   'narasumber': ResourceConfig(
+  //   key: 'narasumber',
+  //   title: 'Data Narasumber',
+  //   path: '/admin/narasumber',
+  //   columns: [
+  //     ResourceField('name', 'Nama'),
+  //     ResourceField('phone', 'Telepon'),
+  //     ResourceField('email', 'Email'),
+  //     ResourceField('telegram_id', 'Telegram'),
+  //   ],
+  //   fields: [
+  //     ResourceField('name', 'Nama', required: true),
+  //     ResourceField('phone', 'Telepon', required: true),
+  //     ResourceField('email', 'Email', required: true),
+  //     ResourceField('telegram_id', 'Telegram ID'),
+  //   ],
+  // ),
   'history': ResourceConfig(
     key: 'history',
     title: 'Riwayat Pencarian',

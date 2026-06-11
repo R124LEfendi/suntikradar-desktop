@@ -1,7 +1,7 @@
 name: lahaula_desktop
 description: Desktop admin client for Lahaula Laravel API.
 publish_to: "none"
-version: 0.1.0+1
+version: 0.1.6
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -17,6 +17,7 @@ dependencies:
   go_router: ^14.6.2
   intl: ^0.20.1
   file_picker: ^8.1.7
+  auto_updater: ^1.0.0
 
 dev_dependencies:
   flutter_test:
