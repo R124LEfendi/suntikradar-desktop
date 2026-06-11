@@ -1,5 +1,5 @@
 param(
-    [string]$DownloadUrlBase = "https://api.suntikradar.com/downloads"
+    [string]$DownloadUrlBase = "https://suntikradar.com/downloads"
 )
 
 Write-Host "==========================================="

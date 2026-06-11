@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/page_scaffold.dart';
 
-final dashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final dashboardProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final data = await ref.watch(apiClientProvider).get('/admin/dashboard');
   return _normalizeDashboardData(Map<String, dynamic>.from(data as Map));
 });
