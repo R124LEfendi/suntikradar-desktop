@@ -11,8 +11,9 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
 
   // URL Appcast XML (dapat disesuaikan atau diambil dari .env)
-  final String feedURL = dotenv.env['APP_UPDATE_URL'] ?? 'https://api.suntikradar.com/updates/appcast.xml';
-  
+  final String feedURL = dotenv.env['APP_UPDATE_URL'] ??
+      'https://api.suntikradar.com/v1/updates/appcast.xml';
+
   try {
     await autoUpdater.setFeedURL(feedURL);
     await autoUpdater.checkForUpdates(inBackground: true);
