@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,7 +13,8 @@ import '../../../core/widgets/responsive_table.dart';
 import '../../../core/widgets/value_reader.dart';
 import 'resource_config.dart';
 
-final adminLookupsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final adminLookupsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final data = await ref.watch(apiClientProvider).get('/admin/lookups');
   return Map<String, dynamic>.from(data as Map);
 });
@@ -219,6 +221,13 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
           onApprove: (item) => _transactionAction(item, 'approve'),
           onCancel: (item) => _transactionAction(item, 'cancel'),
           onHistory: _showNopolHistory,
+          onView: (item) {
+            if (config.key == 'history') {
+              _showNopolHistory(item);
+            } else {
+              _view(item);
+            }
+          },
           onPage: (page) => setState(() => _page = page),
         );
         final form = _formOpen
@@ -268,15 +277,11 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
 
   Future<void> _save(Map<String, dynamic> payload) async {
     try {
-      if (config.key == 'settings') {
-        await ref.read(apiClientProvider).post(config.path, data: payload);
-      } else if (_editing == null) {
-        await ref.read(apiClientProvider).post(config.path, data: payload);
-      } else {
-        await ref
-            .read(apiClientProvider)
-            .put('${config.path}/${_editing!['id']}', data: payload);
+      if (_editing != null) {
+        payload['id'] = _editing!['id'];
       }
+      
+      await ref.read(apiClientProvider).post(config.path, data: payload);
       setState(() {
         _creating = false;
         _editing = null;
@@ -392,20 +397,350 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
         SnackBar(content: Text(ApiClient.mapError(error).message)));
   }
 
+  void _view(Map<String, dynamic> item) {
+    final config = resourceConfigs[widget.resourceKey]!;
+    if (config.key == 'history') {
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Row(
+            children: [
+              const Expanded(
+                  child: Text('Detail Pencarian',
+                      style: TextStyle(fontWeight: FontWeight.bold))),
+              IconButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                icon: const Icon(Icons.close_rounded),
+                tooltip: 'Tutup',
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 880,
+            child: SingleChildScrollView(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final twoCols = constraints.maxWidth >= 880;
+                  final details = Column(
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final columns = constraints.maxWidth >= 640 ? 2 : 1;
+                          return GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: columns,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: columns == 1 ? 3.2 : 2.8,
+                            children: [
+                              // _DetailTile(icon: Icons.search_rounded, label: 'Query', value: item['query']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.two_wheeler_rounded,
+                                  label: 'No Polisi',
+                                  value: item['no_polisi']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.memory_rounded,
+                                  label: 'No Mesin',
+                                  value: item['no_mesin']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.qr_code_scanner_rounded,
+                                  label: 'No Rangka',
+                                  value: item['no_rangka']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.business_rounded,
+                                  label: 'Finance / Leasing',
+                                  value:
+                                      item['nama_leasing']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.location_city_rounded,
+                                  label: 'Cabang',
+                                  value:
+                                      item['nama_cabang']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.domain_rounded,
+                                  label: 'Perusahaan Pengakses',
+                                  value:
+                                      item['user_company']?.toString() ?? '-'),
+                              _DetailTile(
+                                  icon: Icons.person_rounded,
+                                  label: 'User Pengakses',
+                                  value: item['user_name']?.toString() ?? '-'),
+                            ],
+                          );
+                        },
+                      ),
+                      if (item['disclaimer'] != null &&
+                          item['disclaimer'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFFDE68A)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFF92400E), size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  item['disclaimer'].toString(),
+                                  style: const TextStyle(
+                                      color: Color(0xFF92400E),
+                                      fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+
+                  final side = Column(
+                    children: [
+                      _SideBox(
+                        title: 'Lokasi Pengakses',
+                        icon: Icons.location_on_outlined,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (item['latitude'] != null &&
+                                item['longitude'] != null)
+                              Text("${item['latitude']}, ${item['longitude']}",
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900))
+                            else
+                              const Text(
+                                  'Lokasi belum diizinkan oleh pengakses',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 12),
+                            _MutedLine(Icons.person_outline_rounded,
+                                item['user_name']?.toString() ?? 'Admin'),
+                            const SizedBox(height: 8),
+                            _MutedLine(Icons.access_time_rounded,
+                                item['created_at']?.toString() ?? '-'),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: (item['latitude'] != null &&
+                                      item['longitude'] != null)
+                                  ? () async {
+                                      final url =
+                                          'https://www.google.com/maps/search/?api=1&query=${item['latitude']},${item['longitude']}';
+                                      try {
+                                        if (Platform.isWindows) {
+                                          await Process.start('rundll32', [
+                                            'url.dll,FileProtocolHandler',
+                                            url
+                                          ]);
+                                        } else if (Platform.isMacOS) {
+                                          await Process.start('open', [url]);
+                                        } else {
+                                          await Process.start(
+                                              'xdg-open', [url]);
+                                        }
+                                      } catch (e) {
+                                        // ignore
+                                      }
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.map_outlined),
+                              label: const Text('Lihat di Maps'),
+                              style: FilledButton.styleFrom(
+                                disabledBackgroundColor:
+                                    const Color(0xFF6B7280),
+                                disabledForegroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _SideBox(
+                        title: 'Share Informasi',
+                        icon: Icons.send_outlined,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            final phone = item['user_phone']?.toString();
+                            final url = 'https://wa.me/${phone ?? ''}';
+                            try {
+                              if (Platform.isWindows) {
+                                await Process.start('rundll32',
+                                    ['url.dll,FileProtocolHandler', url]);
+                              } else if (Platform.isMacOS) {
+                                await Process.start('open', [url]);
+                              } else {
+                                await Process.start('xdg-open', [url]);
+                              }
+                            } catch (e) {
+                              // ignore
+                            }
+                          },
+                          icon: const Icon(Icons.chat_outlined),
+                          label: const Text('Share ke Whatsapp'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _SideBox(
+                        title: 'Kirim Notifikasi',
+                        icon: Icons.notifications_none_rounded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const TextField(
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                  hintText: 'Tulis pesan untuk admin...',
+                                  hintStyle: TextStyle(fontSize: 13)),
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton.icon(
+                              onPressed: () =>
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Notifikasi belum tersedia')),
+                              ),
+                              icon: const Icon(Icons.send_outlined),
+                              label: const Text('Kirim Notifikasi'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF111827),
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+
+                  if (!twoCols) {
+                    return Column(
+                      children: [
+                        details,
+                        const SizedBox(height: 16),
+                        side,
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: details),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 1, child: side),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Tutup'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            const Expanded(
+                child: Text('Detail Data',
+                    style: TextStyle(fontWeight: FontWeight.bold))),
+            IconButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              icon: const Icon(Icons.close_rounded),
+              tooltip: 'Tutup',
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 720,
+          child: SingleChildScrollView(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 640 ? 2 : 1;
+                return GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: columns,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: columns == 1 ? 3.2 : 2.8,
+                  children: (() {
+                    if (config.key == 'transactions') {
+                      final rows = [
+                        ['Invoice', item['invoice']?.toString() ?? '-'],
+                        ['Pembeli', item['user_name']?.toString() ?? (item['user'] is Map ? item['user']['name']?.toString() : null) ?? '-'],
+                        ['Kontak', item['user_phone']?.toString() ?? (item['user'] is Map ? item['user']['phone']?.toString() : null) ?? '-'],
+                        ['Perusahaan', item['user_company']?.toString() ?? (item['user'] is Map ? item['user']['company']?.toString() : null) ?? '-'],
+                        ['Paket', item['nama_paket']?.toString() ?? '-'],
+                        ['Harga', item['harga']?.toString() ?? '-'],
+                        ['Status', item['status']?.toString() ?? '-'],
+                        ['Tanggal Order', item['created_at']?.toString() ?? '-'],
+                        ['Mulai Aktif', item['tanggal_mulai']?.toString() ?? '-'],
+                        ['Expired', item['tanggal_expired']?.toString() ?? '-'],
+                      ];
+                      return rows.map((row) {
+                        return _DetailTile(
+                          icon: Icons.info_outline_rounded,
+                          label: row[0],
+                          value: row[1],
+                        );
+                      }).toList();
+                    }
+
+                    return item.entries.map((e) {
+                      return _DetailTile(
+                        icon: Icons.info_outline_rounded,
+                        label: e.key.replaceAll('_', ' '),
+                        value: e.value?.toString() ?? '-',
+                      );
+                    }).toList();
+                  })(),
+                );
+              },
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showNopolHistory(Map<String, dynamic> item) async {
-    final nopol = item['no_polisi']?.toString();
-    if (nopol == null || nopol.isEmpty) return;
+    final id = item['id']?.toString();
+    if (id == null || id.isEmpty) return;
 
     try {
-      final data = await ref
-          .read(apiClientProvider)
-          .get('/admin/kendaraan/history/$nopol');
-      final history = Map<String, dynamic>.from(data as Map);
+      final data =
+          await ref.read(apiClientProvider).get('/history-log/detail/$id');
+      final detail = Map<String, dynamic>.from(data as Map);
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (_) => _NopolHistoryDialog(nopol: nopol, history: history),
-      );
+      _view(detail);
     } catch (error) {
       _showError(error);
     }
@@ -489,6 +824,7 @@ class _ResourceList extends StatelessWidget {
     required this.onCancel,
     required this.onHistory,
     required this.onPage,
+    required this.onView,
   });
 
   final ResourceConfig config;
@@ -504,6 +840,7 @@ class _ResourceList extends StatelessWidget {
   final ValueChanged<Map<String, dynamic>> onCancel;
   final ValueChanged<Map<String, dynamic>> onHistory;
   final ValueChanged<int> onPage;
+  final ValueChanged<Map<String, dynamic>> onView;
 
   @override
   Widget build(BuildContext context) {
@@ -533,6 +870,7 @@ class _ResourceList extends StatelessWidget {
                     onDelete: onDelete,
                     onApprove: onApprove,
                     onCancel: onCancel,
+                    onView: onView,
                   )
                 : ResponsiveTable(
                     columns: config.columns.map((field) {
@@ -544,13 +882,14 @@ class _ResourceList extends StatelessWidget {
                       );
                     }).toList(),
                     rows: items,
-                    actions: (item) => _Actions(
+                    actions: (row) => _Actions(
                       config: config,
-                      item: item,
-                      onEdit: () => onEdit(item),
-                      onDelete: () => onDelete(item),
-                      onApprove: () => onApprove(item),
-                      onCancel: () => onCancel(item),
+                      item: row,
+                      onEdit: () => onEdit(row),
+                      onDelete: () => onDelete(row),
+                      onApprove: () => onApprove(row),
+                      onCancel: () => onCancel(row),
+                      onView: () => onView(row),
                     ),
                   ),
           ),
@@ -642,6 +981,7 @@ class _Actions extends StatelessWidget {
     required this.onDelete,
     required this.onApprove,
     required this.onCancel,
+    required this.onView,
   });
 
   final ResourceConfig config;
@@ -650,12 +990,17 @@ class _Actions extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onApprove;
   final VoidCallback onCancel;
+  final VoidCallback onView;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _TableActionButton(
+            onPressed: onView,
+            icon: Icons.visibility_outlined,
+            tooltip: 'Lihat Data'),
         if (config.canEdit)
           _TableActionButton(
               onPressed: onEdit, icon: Icons.edit_outlined, tooltip: 'Edit'),
@@ -736,6 +1081,7 @@ class _ResourceFormPage extends ConsumerStatefulWidget {
 
 class _ResourceFormPageState extends ConsumerState<_ResourceFormPage> {
   late final Map<String, TextEditingController> _controllers;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -850,7 +1196,7 @@ class _ResourceFormPageState extends ConsumerState<_ResourceFormPage> {
   Widget _fieldWidget(
       ResourceField field, bool wide, Map<String, dynamic> lookups) {
     final controller = _controllers[field.key]!;
-    final options = _optionsFor(field.key, lookups);
+    final options = _optionsFor(field.key, lookups, widget.config.key);
     if (options.isNotEmpty) {
       final value = options.any((option) => option.value == controller.text)
           ? controller.text
@@ -871,15 +1217,22 @@ class _ResourceFormPageState extends ConsumerState<_ResourceFormPage> {
 
     return TextField(
       controller: controller,
-      obscureText: field.password,
+      obscureText: field.password && _obscurePassword,
       minLines: wide ? 4 : 1,
       maxLines: wide ? 7 : 1,
       decoration: InputDecoration(
-          labelText: field.required ? '${field.label} *' : field.label),
+        labelText: field.required ? '${field.label} *' : field.label,
+        suffixIcon: field.password
+            ? IconButton(
+                icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              )
+            : null,
+      ),
     );
   }
 
-  List<_SelectOption> _optionsFor(String key, Map<String, dynamic> lookups) {
+  List<_SelectOption> _optionsFor(String key, Map<String, dynamic> lookups, String configKey) {
     if (key == 'role') {
       return const [
         _SelectOption('Admin', 'Admin'),
@@ -888,6 +1241,13 @@ class _ResourceFormPageState extends ConsumerState<_ResourceFormPage> {
       ];
     }
     if (key == 'status') {
+      if (configKey == 'paket') {
+        return const [
+          _SelectOption('Aktif', 'Aktif'),
+          _SelectOption('Tidak Aktif', 'Tidak Aktif'),
+          _SelectOption('Cancel', 'Cancel'),
+        ];
+      }
       return const [
         _SelectOption('active', 'Aktif'),
         _SelectOption('pending', 'Pending'),
@@ -1756,91 +2116,6 @@ class _ImportProgressDialogState extends ConsumerState<_ImportProgressDialog> {
   }
 }
 
-class _NopolHistoryDialog extends StatelessWidget {
-  const _NopolHistoryDialog({required this.nopol, required this.history});
-
-  final String nopol;
-  final Map<String, dynamic> history;
-
-  @override
-  Widget build(BuildContext context) {
-    final logs = (history['logs'] as List? ?? const [])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
-
-    return AlertDialog(
-      title: Row(
-        children: [
-          Expanded(child: Text('Riwayat Akses $nopol')),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close_rounded),
-            tooltip: 'Tutup',
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: 680,
-        height: 480,
-        child: logs.isEmpty
-            ? const EmptyState(title: 'Belum ada riwayat akses')
-            : ListView.separated(
-                itemCount: logs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final log = logs[index];
-                  final user = log['user'] is Map
-                      ? Map<String, dynamic>.from(log['user'] as Map)
-                      : <String, dynamic>{};
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE5EAF0)),
-                    ),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Color(0xFFE0E7FF),
-                            child: Icon(Icons.person_rounded,
-                                color: Color(0xFF4F46E5))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(user['name']?.toString() ?? 'User',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w900)),
-                              const SizedBox(height: 2),
-                              Text(log['query']?.toString() ?? '-',
-                                  style: const TextStyle(
-                                      color: Color(0xFF64748B), fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        Text(
-                            log['created_at']?.toString().split('.').first ??
-                                '-',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF64748B))),
-                      ],
-                    ),
-                  );
-                },
-              ),
-      ),
-      actions: [
-        FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup')),
-      ],
-    );
-  }
-}
-
 class _ResourceCardGrid extends StatelessWidget {
   const _ResourceCardGrid({
     required this.config,
@@ -1849,6 +2124,7 @@ class _ResourceCardGrid extends StatelessWidget {
     required this.onDelete,
     required this.onApprove,
     required this.onCancel,
+    required this.onView,
   });
 
   final ResourceConfig config;
@@ -1857,6 +2133,7 @@ class _ResourceCardGrid extends StatelessWidget {
   final ValueChanged<Map<String, dynamic>> onDelete;
   final ValueChanged<Map<String, dynamic>> onApprove;
   final ValueChanged<Map<String, dynamic>> onCancel;
+  final ValueChanged<Map<String, dynamic>> onView;
 
   @override
   Widget build(BuildContext context) {
@@ -1875,6 +2152,7 @@ class _ResourceCardGrid extends StatelessWidget {
               onDelete: () => onDelete(item),
               onApprove: () => onApprove(item),
               onCancel: () => onCancel(item),
+              onView: () => onView(item),
             ),
           );
         }).toList(),
@@ -1891,6 +2169,7 @@ class _ResourceCard extends StatelessWidget {
     required this.onDelete,
     required this.onApprove,
     required this.onCancel,
+    required this.onView,
   });
 
   final ResourceConfig config;
@@ -1899,11 +2178,12 @@ class _ResourceCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onApprove;
   final VoidCallback onCancel;
+  final VoidCallback onView;
 
   @override
   Widget build(BuildContext context) {
     if (config.columns.isEmpty) return const SizedBox();
-    
+
     final titleCol = config.columns.first;
     final otherCols = config.columns.skip(1).toList();
 
@@ -1945,8 +2225,8 @@ class _ResourceCard extends StatelessWidget {
                   ),
                 ),
                 if (item['status'] != null) ...[
-                   const SizedBox(width: 8),
-                   _StatusBadge(status: item['status'].toString()),
+                  const SizedBox(width: 8),
+                  _StatusBadge(status: item['status'].toString()),
                 ],
               ],
             ),
@@ -1956,16 +2236,16 @@ class _ResourceCard extends StatelessWidget {
             child: Column(
               children: otherCols.map((col) {
                 if (col.key == 'status') return const SizedBox();
-                
+
                 var valueStr = readValue(item, col.key);
                 if (col.key.contains('harga') || col.key.contains('price')) {
-                   final numVal = double.tryParse(valueStr);
-                   if (numVal != null) {
-                       valueStr = 'Rp ${numVal.toStringAsFixed(0)}';
-                   }
+                  final numVal = double.tryParse(valueStr);
+                  if (numVal != null) {
+                    valueStr = 'Rp ${numVal.toStringAsFixed(0)}';
+                  }
                 }
                 if (col.key.contains('hari') || col.key.contains('day')) {
-                   valueStr = '$valueStr Hari';
+                  valueStr = '$valueStr Hari';
                 }
 
                 return Padding(
@@ -2007,6 +2287,14 @@ class _ResourceCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                TextButton.icon(
+                  onPressed: onView,
+                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                  label: const Text('Lihat Data'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF64748B),
+                  ),
+                ),
                 if (config.canEdit)
                   TextButton.icon(
                     onPressed: onEdit,
@@ -2051,7 +2339,8 @@ class _StatusBadge extends StatelessWidget {
     } else if (status.toLowerCase() == 'pending') {
       bg = const Color(0xFFFEF9C3);
       fg = const Color(0xFFCA8A04);
-    } else if (status.toLowerCase() == 'blocked' || status.toLowerCase() == 'inactive') {
+    } else if (status.toLowerCase() == 'blocked' ||
+        status.toLowerCase() == 'inactive') {
       bg = const Color(0xFFFEE2E2);
       fg = const Color(0xFFDC2626);
     }
@@ -2071,6 +2360,141 @@ class _StatusBadge extends StatelessWidget {
           letterSpacing: 0.5,
         ),
       ),
+    );
+  }
+}
+
+class _DetailTile extends StatelessWidget {
+  const _DetailTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.wide = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(minHeight: wide ? 122 : 112),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Icon(icon, color: const Color(0xFF0F172A), size: 19),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label.toUpperCase(),
+                    style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900)),
+                const SizedBox(height: 6),
+                Text(value,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SideBox extends StatelessWidget {
+  const _SideBox({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5EAF0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE5EAF0))),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: const Color(0xFF4F46E5), size: 20),
+                const SizedBox(width: 12),
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+              ],
+            ),
+          ),
+          Padding(padding: const EdgeInsets.all(18), child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _MutedLine extends StatelessWidget {
+  const _MutedLine(this.icon, this.text);
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF94A3B8), size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text,
+              style: const TextStyle(
+                  color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+        ),
+      ],
     );
   }
 }

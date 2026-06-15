@@ -45,7 +45,7 @@ class _ResponsiveTableState extends State<ResponsiveTable> {
   @override
   Widget build(BuildContext context) {
     final tableWidth = widget.columns.fold<double>(
-        widget.actions == null ? 0 : 124, (sum, column) => sum + column.minWidth);
+        widget.actions == null ? 0 : 188, (sum, column) => sum + column.minWidth);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -94,7 +94,7 @@ class _ResponsiveTableState extends State<ResponsiveTable> {
                       if (widget.actions != null)
                         const DataColumn(
                             label: SizedBox(
-                                width: 96,
+                                width: 160,
                                 child:
                                     Text('AKSI', textAlign: TextAlign.center))),
                     ],
@@ -129,7 +129,7 @@ class _ResponsiveTableState extends State<ResponsiveTable> {
                           }),
                           if (widget.actions != null)
                             DataCell(SizedBox(
-                                width: 96,
+                                width: 160,
                                 child: Center(child: widget.actions!(row)))),
                         ],
                       );

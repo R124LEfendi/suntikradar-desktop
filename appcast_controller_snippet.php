@@ -9,9 +9,9 @@ class AppcastController extends Controller
     public function appcast()
     {
         // HASIL GENERATE OTOMATIS SAAT BUILD:
-        $appVersion = "0.1.6";
-        $releaseDate = "Thu, 11 Jun 2026 11:56:25 GMT";
-        $downloadUrl = "https://suntikradar.com/downloads/SuntikRadar-Setup-v0.1.6.exe";
+        $version = "0.1.7";
+        $pubDate = "Mon, 15 Jun 2026 12:14:25 GMT";
+        $downloadUrl = "https://suntikradar.com/downloads/SuntikRadar-Setup-v0.1.7.exe";
         
         // Silakan ubah Changelog di bawah ini jika ada fitur baru:
         $changelog = <<<HTML
@@ -21,7 +21,7 @@ class AppcastController extends Controller
             </ul>
             HTML;
 
-        $xml = <<<XML
+                    $xml = <<<XML
             <?xml version="1.0" encoding="utf-8"?>
             <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
                 <channel>
@@ -30,17 +30,17 @@ class AppcastController extends Controller
                     <language>id</language>
                     
                     <item>
-                        <title>Pembaruan Versi {$appVersion}</title>
+                        <title>Pembaruan Versi {$version}</title>
                         <description>
                             <![CDATA[
                                 {$changelog}
                             ]]>
                         </description>
-                        <pubDate>{$releaseDate}</pubDate>
-                        <sparkle:version>{$appVersion}</sparkle:version>
-                        <sparkle:shortVersionString>{$appVersion}</sparkle:shortVersionString>
+                        <pubDate>{$pubDate}</pubDate>
+                        <sparkle:version>{$version}</sparkle:version>
+                        <sparkle:shortVersionString>{$version}</sparkle:shortVersionString>
                         <enclosure url="{$downloadUrl}" 
-                                sparkle:version="{$appVersion}" 
+                                sparkle:version="{$version}"     
                                 sparkle:os="windows"
                                 type="application/octet-stream" />
                     </item>
@@ -49,6 +49,6 @@ class AppcastController extends Controller
             XML;
 
         return response($xml, 200)
-            ->header('Content-Type', 'text/xml');
+                ->header('Content-Type', 'text/xml');
     }
 }
