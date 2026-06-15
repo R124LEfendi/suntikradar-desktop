@@ -69,19 +69,19 @@ class AppcastController extends Controller
     public function appcast()
     {
         // HASIL GENERATE OTOMATIS SAAT BUILD:
-        \$latestVersion = "$appVersion";
-        \$releaseDate = "$dateStr";
-        \$downloadUrl = "$fullUrl";
+        `$latestVersion = "$appVersion";
+        `$releaseDate = "$dateStr";
+        `$downloadUrl = "$fullUrl";
         
         // Silakan ubah Changelog di bawah ini jika ada fitur baru:
-        \$changelog = <<<HTML
+        `$changelog = <<<HTML
             <b>Apa yang baru di rilis ini:</b>
             <ul>
                 <li>Perbaikan bug dan peningkatan performa</li>
             </ul>
 HTML;
 
-        \$xml = <<<XML
+        `$xml = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
@@ -90,17 +90,17 @@ HTML;
         <language>id</language>
         
         <item>
-            <title>Pembaruan Versi {\$latestVersion}</title>
+            <title>Pembaruan Versi {`$latestVersion}</title>
             <description>
                 <![CDATA[
-                    {\$changelog}
+                    {`$changelog}
                 ]]>
             </description>
-            <pubDate>{\$releaseDate}</pubDate>
-            <sparkle:version>{\$latestVersion}</sparkle:version>
-            <sparkle:shortVersionString>{\$latestVersion}</sparkle:shortVersionString>
-            <enclosure url="{\$downloadUrl}" 
-                       sparkle:version="{\$latestVersion}" 
+            <pubDate>{`$releaseDate}</pubDate>
+            <sparkle:version>{`$latestVersion}</sparkle:version>
+            <sparkle:shortVersionString>{`$latestVersion}</sparkle:shortVersionString>
+            <enclosure url="{`$downloadUrl}" 
+                       sparkle:version="{`$latestVersion}" 
                        sparkle:os="windows"
                        type="application/octet-stream" />
         </item>
@@ -108,7 +108,7 @@ HTML;
 </rss>
 XML;
 
-        return response(\$xml, 200)
+        return response(`$xml, 200)
                 ->header('Content-Type', 'text/xml');
     }
 }

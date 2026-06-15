@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -46,6 +50,9 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
   late final TextEditingController _phone;
   late final TextEditingController _oldPassword;
   late final TextEditingController _password;
+  String? _photoPath;
+  bool _obscureOldPassword = true;
+  bool _obscurePassword = true;
   bool _saving = false;
 
   @override
@@ -68,6 +75,16 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      setState(() => _photoPath = result.files.first.path);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -78,6 +95,37 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: GestureDetector(
+                  onTap: _pickPhoto,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: const Color(0xFFE0E7FF),
+                        backgroundImage: _photoPath != null
+                            ? FileImage(File(_photoPath!))
+                            : (widget.initial['photo'] != null
+                                ? NetworkImage(widget.initial['photo']!)
+                                : null) as ImageProvider?,
+                        child: _photoPath == null && widget.initial['photo'] == null
+                            ? const Icon(Icons.person, size: 50, color: Color(0xFF4F46E5))
+                            : null,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4F46E5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nama')),
               const SizedBox(height: 12),
               TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email')),
@@ -86,14 +134,26 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
               const SizedBox(height: 12),
               TextField(
                 controller: _oldPassword,
-                decoration: const InputDecoration(labelText: 'Password lama'),
-                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password lama',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureOldPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
+                    onPressed: () => setState(() => _obscureOldPassword = !_obscureOldPassword),
+                  ),
+                ),
+                obscureText: _obscureOldPassword,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _password,
-                decoration: const InputDecoration(labelText: 'Password baru'),
-                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password baru',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                obscureText: _obscurePassword,
               ),
               const SizedBox(height: 18),
               Align(
@@ -113,13 +173,27 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await ref.read(apiClientProvider).post('/profile/update', data: {
+      final payload = {
         'name': _name.text.trim(),
         'email': _email.text.trim(),
         'phone': _phone.text.trim(),
         if (_oldPassword.text.isNotEmpty) 'old_password': _oldPassword.text,
         if (_password.text.isNotEmpty) 'password': _password.text,
-      });
+      };
+
+      dynamic dataToSend;
+      if (_photoPath != null) {
+        final formData = FormData.fromMap(payload);
+        formData.files.add(MapEntry(
+          'photo',
+          await MultipartFile.fromFile(_photoPath!),
+        ));
+        dataToSend = formData;
+      } else {
+        dataToSend = payload;
+      }
+
+      await ref.read(apiClientProvider).post('/profile/update', data: dataToSend);
       ref.invalidate(profileProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil berhasil disimpan')));

@@ -9,9 +9,9 @@ class AppcastController extends Controller
     public function appcast()
     {
         // HASIL GENERATE OTOMATIS SAAT BUILD:
-        $version = "0.1.7";
-        $pubDate = "Mon, 15 Jun 2026 12:14:25 GMT";
-        $downloadUrl = "https://suntikradar.com/downloads/SuntikRadar-Setup-v0.1.7.exe";
+        $latestVersion = "0.1.8";
+        $releaseDate = "Mon, 15 Jun 2026 14:32:47 GMT";
+        $downloadUrl = "https://suntikradar.com/downloads/SuntikRadar-Setup-v0.1.8.exe";
         
         // Silakan ubah Changelog di bawah ini jika ada fitur baru:
         $changelog = <<<HTML
@@ -19,34 +19,34 @@ class AppcastController extends Controller
             <ul>
                 <li>Perbaikan bug dan peningkatan performa</li>
             </ul>
-            HTML;
+HTML;
 
-                    $xml = <<<XML
-            <?xml version="1.0" encoding="utf-8"?>
-            <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-                <channel>
-                    <title>SuntikRadar Desktop Appcast</title>
-                    <description>Pembaruan SuntikRadar Desktop</description>
-                    <language>id</language>
-                    
-                    <item>
-                        <title>Pembaruan Versi {$version}</title>
-                        <description>
-                            <![CDATA[
-                                {$changelog}
-                            ]]>
-                        </description>
-                        <pubDate>{$pubDate}</pubDate>
-                        <sparkle:version>{$version}</sparkle:version>
-                        <sparkle:shortVersionString>{$version}</sparkle:shortVersionString>
-                        <enclosure url="{$downloadUrl}" 
-                                sparkle:version="{$version}"     
-                                sparkle:os="windows"
-                                type="application/octet-stream" />
-                    </item>
-                </channel>
-            </rss>
-            XML;
+        $xml = <<<XML
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>SuntikRadar Desktop Appcast</title>
+        <description>Pembaruan SuntikRadar Desktop</description>
+        <language>id</language>
+        
+        <item>
+            <title>Pembaruan Versi {$latestVersion}</title>
+            <description>
+                <![CDATA[
+                    {$changelog}
+                ]]>
+            </description>
+            <pubDate>{$releaseDate}</pubDate>
+            <sparkle:version>{$latestVersion}</sparkle:version>
+            <sparkle:shortVersionString>{$latestVersion}</sparkle:shortVersionString>
+            <enclosure url="{$downloadUrl}" 
+                       sparkle:version="{$latestVersion}" 
+                       sparkle:os="windows"
+                       type="application/octet-stream" />
+        </item>
+    </channel>
+</rss>
+XML;
 
         return response($xml, 200)
                 ->header('Content-Type', 'text/xml');

@@ -13,6 +13,7 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _loginController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -125,10 +126,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         const SizedBox(height: 14),
                         TextField(
                           controller: _passwordController,
-                          decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.lock_outline),
-                              labelText: 'Password'),
-                          obscureText: true,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            labelText: 'Password',
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                          obscureText: _obscurePassword,
                           onSubmitted: (_) => _submit(),
                         ),
                         if (controller.errorText() != null) ...[

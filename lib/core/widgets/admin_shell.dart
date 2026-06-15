@@ -180,25 +180,33 @@ class _TopBar extends ConsumerWidget {
           const SizedBox(width: 6),
           const _ConnectionBadge(),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5EAF0)),
-            ),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFFE0E7FF),
-                    child:
-                        Icon(Icons.person, size: 16, color: Color(0xFF4F46E5))),
-                const SizedBox(width: 8),
-                if (!compact)
-                  Text('${user?.name ?? '-'}  •  ${user?.role ?? '-'}',
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-              ],
+          InkWell(
+            onTap: () => context.go('/profile'),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5EAF0)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                      radius: 14,
+                      backgroundColor: const Color(0xFFE0E7FF),
+                      backgroundImage: user?.photo != null
+                          ? NetworkImage(user!.photo!)
+                          : null,
+                      child: user?.photo == null
+                          ? const Icon(Icons.person, size: 16, color: Color(0xFF4F46E5))
+                          : null),
+                  const SizedBox(width: 8),
+                  if (!compact)
+                    Text('${user?.name ?? '-'}  •  ${user?.role ?? '-'}',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 10),
