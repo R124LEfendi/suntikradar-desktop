@@ -112,11 +112,13 @@ class DashboardPage extends ConsumerWidget {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              final metricCols = constraints.maxWidth >= 980
-                  ? 3
-                  : constraints.maxWidth >= 680
-                      ? 2
-                      : 1;
+              final metricCols = constraints.maxWidth >= 1200
+                  ? 4
+                  : constraints.maxWidth >= 980
+                      ? 3
+                      : constraints.maxWidth >= 680
+                          ? 2
+                          : 1;
               return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -127,7 +129,7 @@ class DashboardPage extends ConsumerWidget {
                       crossAxisCount: metricCols,
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
-                      childAspectRatio: metricCols == 1 ? 2.9 : 2.25,
+                      childAspectRatio: metricCols == 1 ? 2.9 : (metricCols == 4 ? 1.9 : 2.25),
                       children: [
                         _MetricCard(
                           title: 'Total Data Unit',
@@ -154,6 +156,21 @@ class DashboardPage extends ConsumerWidget {
                               'Total ${_number(counts['search_total'])} akses pencarian tercatat',
                           icon: Icons.history_rounded,
                           color: const Color(0xFF06B6D4),
+                        ),
+                        _MetricCard(
+                          title: 'User Aktif',
+                          value: data['activeUserCount'] ?? data['active_user_count'] ?? 0,
+                          badge: 'Online',
+                          icon: Icons.podcasts_rounded,
+                          color: const Color(0xFF0EA5E9),
+                          customNote: _ActiveUsersList(
+                            activeUsers: (data['activeUsers'] as List? ?? data['active_users'] as List?)
+                                    ?.cast<Map<String, dynamic>>() ??
+                                [],
+                            totalCount: int.tryParse(
+                                    (data['activeUserCount'] ?? data['active_user_count'] ?? 0).toString()) ??
+                                0,
+                          ),
                         ),
                       ],
                     ),
@@ -206,7 +223,8 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.value,
     required this.badge,
-    required this.note,
+    this.note,
+    this.customNote,
     required this.icon,
     required this.color,
   });
@@ -214,7 +232,8 @@ class _MetricCard extends StatelessWidget {
   final String title;
   final dynamic value;
   final String badge;
-  final String note;
+  final String? note;
+  final Widget? customNote;
   final IconData icon;
   final Color color;
 
@@ -269,17 +288,76 @@ class _MetricCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
             const SizedBox(height: 10),
-            Text(note,
-                style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700)),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            customNote ??
+                Text(note ?? '',
+                    style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ActiveUsersList extends StatelessWidget {
+  const _ActiveUsersList({required this.activeUsers, required this.totalCount});
+  final List<Map<String, dynamic>> activeUsers;
+  final int totalCount;
+
+  @override
+  Widget build(BuildContext context) {
+    if (activeUsers.isEmpty && totalCount == 0) {
+      return const Text('Belum ada user aktif saat ini',
+          style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 12,
+              fontWeight: FontWeight.w700));
+    }
+
+    final displayUsers = activeUsers.take(2).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (displayUsers.isEmpty && totalCount > 0)
+          Text('$totalCount user sedang aktif',
+              style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+        for (final user in displayUsers)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              children: [
+                const Icon(Icons.circle, size: 6, color: Colors.green),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    user['name']?.toString() ?? 'User',
+                    style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (totalCount > 2)
+          Text('+${totalCount - 2} user lainnya',
+              style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+      ],
     );
   }
 }

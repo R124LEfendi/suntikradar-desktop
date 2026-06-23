@@ -346,13 +346,15 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
     if (result == null) return;
 
     try {
-      final formData = FormData.fromMap({
-        'leasing_id': result.leasingId,
-        'cabang_id': result.cabangId,
+      final payloadData = <String, dynamic>{
         'upload_type': result.uploadType,
         'file': await MultipartFile.fromFile(result.filePath,
             filename: result.fileName),
-      });
+      };
+      if (result.leasingId != null) payloadData['leasing_id'] = result.leasingId;
+      if (result.cabangId != null) payloadData['cabang_id'] = result.cabangId;
+
+      final formData = FormData.fromMap(payloadData);
       final response = await ref
           .read(apiClientProvider)
           .post('/admin/kendaraan/import', data: formData);
@@ -1749,15 +1751,15 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
               const Spacer(),
               FilledButton(
                 onPressed:
-                    file?.path == null || leasingId == null || cabangId == null
+                    file?.path == null
                         ? null
                         : () => Navigator.pop(
                               context,
                               _ImportPayload(
                                 filePath: file!.path!,
                                 fileName: file!.name,
-                                leasingId: leasingId!,
-                                cabangId: cabangId!,
+                                leasingId: leasingId,
+                                cabangId: cabangId,
                                 uploadType: uploadType,
                               ),
                             ),
@@ -1800,15 +1802,15 @@ class _ImportPayload {
   const _ImportPayload({
     required this.filePath,
     required this.fileName,
-    required this.leasingId,
-    required this.cabangId,
+    this.leasingId,
+    this.cabangId,
     required this.uploadType,
   });
 
   final String filePath;
   final String fileName;
-  final String leasingId;
-  final String cabangId;
+  final String? leasingId;
+  final String? cabangId;
   final String uploadType;
 }
 

@@ -9,9 +9,9 @@ class AppcastController extends Controller
     public function appcast()
     {
         // HASIL GENERATE OTOMATIS SAAT BUILD:
-        $latestVersion = "0.1.8";
-        $releaseDate = "Mon, 15 Jun 2026 14:32:47 GMT";
-        $downloadUrl = "https://suntikradar.com/downloads/SuntikRadar-Setup-v0.1.8.exe";
+        $latestVersion = "0.1.9";
+        $releaseDate = "Tue, 23 Jun 2026 09:26:18 GMT";
+        $downloadUrl = "https://suntikradar.com/downloads/SuntikRadar-Setup-v0.1.9.exe";
         
         // Silakan ubah Changelog di bawah ini jika ada fitur baru:
         $changelog = <<<HTML

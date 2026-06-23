@@ -58,7 +58,7 @@ const resourceConfigs = <String, ResourceConfig>{
       ResourceField('nama_stnk', 'Nama STNK'),
       ResourceField('email_notif', 'Email Notif'),
       ResourceField('leasing_id', 'ID Leasing'),
-      ResourceField('cabang_id', 'ID Cabang', required: true),
+      ResourceField('cabang_id', 'ID Cabang'),
       ResourceField('ovd', 'OVD'),
       ResourceField('nomor_kontrak', 'Nomor Kontrak'),
     ],
