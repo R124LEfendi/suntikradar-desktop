@@ -35,3 +35,6 @@ flutter run -d windows
 ```
 
 Konfigurasi API ada di `.env`.
+
+ketika ingin melakukan update ubah versi di file pubspec.yaml. 
+kemudian masukkan file hasil build ke folder public/downloads, dan masukkan data controller appcast_controller_snippet.php ke controller penyedia .xml
