@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/responsive_table.dart';
@@ -177,16 +178,13 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
         config.key == 'settings' && items.isNotEmpty ? items.first : null;
 
     if (_isSettings) {
-      return Center(
-        child: SizedBox(
-          width: 720,
-          child: _ResourceFormPage(
-            key: ValueKey('${config.key}-${settingsItem?['id'] ?? 'settings'}'),
-            config: config,
-            item: settingsItem,
-            onCancel: null,
-            onSubmit: _save,
-          ),
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        width: double.infinity,
+        child: _SettingsForm(
+          key: ValueKey('${config.key}-${settingsItem?['id'] ?? 'settings'}'),
+          item: settingsItem,
+          onSubmit: _save,
         ),
       );
     }
@@ -280,8 +278,24 @@ class _ResourcePageState extends ConsumerState<ResourcePage> {
       if (_editing != null) {
         payload['id'] = _editing!['id'];
       }
-      
-      await ref.read(apiClientProvider).post(config.path, data: payload);
+
+      bool hasFile = false;
+      for (final field in config.fields) {
+        if (field.image) {
+          final value = payload[field.key]?.toString() ?? '';
+          if (value.isNotEmpty && !value.startsWith('http')) {
+            payload[field.key] = await MultipartFile.fromFile(value);
+            hasFile = true;
+          } else if (value.startsWith('http')) {
+            // Do not send existing network URLs to backend on update
+            payload.remove(field.key);
+          }
+        }
+      }
+
+      final dataToSend = hasFile ? FormData.fromMap(payload) : payload;
+
+      await ref.read(apiClientProvider).post(config.path, data: dataToSend);
       setState(() {
         _creating = false;
         _editing = null;
@@ -1152,7 +1166,8 @@ class _ResourceFormPageState extends ConsumerState<_ResourceFormPage> {
                       final wide = field.key.contains('terms') ||
                           field.key.contains('template') ||
                           field.key.contains('disclaimer') ||
-                          field.key.contains('alamat');
+                          field.key.contains('alamat') ||
+                          field.image;
                       return SizedBox(
                         width: twoCols && !wide
                             ? (constraints.maxWidth - 14) / 2
@@ -1214,6 +1229,13 @@ class _ResourceFormPageState extends ConsumerState<_ResourceFormPage> {
             _controllers['cabang_id']!.clear();
           }
         }),
+      );
+    }
+
+    if (field.image) {
+      return _ImageUploadField(
+        label: field.required ? '${field.label} *' : field.label,
+        controller: controller,
       );
     }
 
@@ -1812,6 +1834,115 @@ class _ImportPayload {
   final String? leasingId;
   final String? cabangId;
   final String uploadType;
+}
+
+class _ImageUploadField extends StatefulWidget {
+  const _ImageUploadField({
+    required this.label,
+    required this.controller,
+  });
+
+  final String label;
+  final TextEditingController controller;
+
+  @override
+  State<_ImageUploadField> createState() => _ImageUploadFieldState();
+}
+
+class _ImageUploadFieldState extends State<_ImageUploadField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChange);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChange);
+    super.dispose();
+  }
+
+  void _onControllerChange() {
+    setState(() {});
+  }
+
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      widget.controller.text = result.files.first.path!;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = widget.controller.text;
+    final isLocal = value.isNotEmpty && File(value).existsSync();
+    final isNetwork = value.isNotEmpty && !isLocal;
+
+    String networkUrl = value;
+    if (isNetwork && !value.startsWith('http')) {
+      final apiUrl = AppConfig.apiBaseUrl;
+      final baseUrl = apiUrl.endsWith('/api')
+          ? apiUrl.substring(0, apiUrl.length - 4)
+          : apiUrl;
+      final cleanPath = value.startsWith('/') ? value : '/$value';
+      networkUrl = '$baseUrl$cleanPath';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label,
+            style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 12,
+                fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: _pickImage,
+          child: Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              borderRadius: BorderRadius.circular(14),
+              image: isLocal
+                  ? DecorationImage(
+                      image: FileImage(File(value)),
+                      fit: BoxFit.contain,
+                    )
+                  : (isNetwork
+                      ? DecorationImage(
+                          image: NetworkImage(networkUrl),
+                          fit: BoxFit.contain,
+                        )
+                      : null),
+            ),
+            child: value.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined,
+                            size: 32, color: Color(0xFF94A3B8)),
+                        SizedBox(height: 8),
+                        Text('Pilih Gambar',
+                            style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  )
+                : null,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _SelectOption {
@@ -2497,6 +2628,207 @@ class _MutedLine extends StatelessWidget {
                   color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
         ),
       ],
+    );
+  }
+}
+
+class _SettingsForm extends StatefulWidget {
+  const _SettingsForm({
+    super.key,
+    this.item,
+    required this.onSubmit,
+  });
+
+  final Map<String, dynamic>? item;
+  final ValueChanged<Map<String, dynamic>> onSubmit;
+
+  @override
+  State<_SettingsForm> createState() => _SettingsFormState();
+}
+
+class _SettingsFormState extends State<_SettingsForm> {
+  late final Map<String, TextEditingController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    final keys = [
+      'app_name', 'app_title', 'footer_text',
+      'logo_path',
+      'login_start', 'login_end',
+      'disclaimer', 'whatsapp_share_template', 'terms_conditions'
+    ];
+    _controllers = {
+      for (final key in keys)
+        key: TextEditingController(text: widget.item?[key]?.toString() ?? ''),
+    };
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _submit() {
+    final payload = <String, dynamic>{
+      if (widget.item?['id'] != null) 'id': widget.item!['id'],
+      for (final entry in _controllers.entries)
+        if (entry.value.text.trim().isNotEmpty)
+          entry.key: entry.value.text.trim(),
+    };
+    widget.onSubmit(payload);
+  }
+
+  Widget _buildTextField(String key, String label, {int maxLines = 1, String? hint, String? helper}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label.isNotEmpty) ...[
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF64748B))),
+          const SizedBox(height: 8),
+        ],
+        TextField(
+          controller: _controllers[key],
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 2)),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          style: key.contains('login') || key == 'whatsapp_share_template' 
+              ? const TextStyle(fontFamily: 'monospace') : null,
+        ),
+        if (helper != null) ...[
+          const SizedBox(height: 6),
+          Text(helper, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+        ]
+      ],
+    );
+  }
+
+  Widget _buildCard(String title, IconData icon, Color iconColor, String? badge, List<Widget> children) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE2E8F0))),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 24),
+                const SizedBox(width: 12),
+                Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF1E293B)))),
+                if (badge != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(20)),
+                    child: Text(badge, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF64748B), letterSpacing: 1)),
+                  ),
+              ],
+            ),
+            const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(height: 1, color: Color(0xFFE2E8F0))),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 800;
+        final leftColumn = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCard('Identitas & Branding', Icons.palette_rounded, const Color(0xFF0EA5E9), null, [
+              _buildTextField('app_name', 'Nama Aplikasi'),
+              const SizedBox(height: 16),
+              _buildTextField('app_title', 'Judul (Tagline)'),
+              const SizedBox(height: 16),
+              _buildTextField('footer_text', 'Teks Footer', hint: '© 2026 LaHaula.'),
+            ]),
+            _buildCard('Visual & Asset', Icons.image_rounded, const Color(0xFF0EA5E9), null, [
+              _ImageUploadField(label: 'Logo Utama (Sidebar)', controller: _controllers['logo_path']!),
+              const SizedBox(height: 4),
+              const Text('Format: PNG, JPG, SVG (Maks. 2MB)', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+            ]),
+            _buildCard('Siklus Operasional', Icons.access_time_filled_rounded, const Color(0xFF0EA5E9), null, [
+              _buildTextField('login_start', 'Mulai Akses (WIB)', hint: '00:00:00'),
+              const SizedBox(height: 16),
+              _buildTextField('login_end', 'Selesai Akses (WIB)', hint: '23:59:59'),
+            ]),
+          ],
+        );
+
+        final rightColumn = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildCard('Disclaimer Layanan', Icons.description_rounded, const Color(0xFF0EA5E9), 'INFO DATA', [
+              _buildTextField('disclaimer', '', maxLines: 5, hint: 'Masukkan teks disclaimer...'),
+            ]),
+            _buildCard('Template Share WhatsApp', Icons.chat_rounded, Colors.green, 'PESAN', [
+              _buildTextField('whatsapp_share_template', '', maxLines: 12, hint: 'Masukkan template pesan WhatsApp...'),
+              const SizedBox(height: 12),
+              RichText(text: const TextSpan(
+                style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.6),
+                children: [
+                  TextSpan(text: 'Placeholder: '),
+                  TextSpan(text: '{nopol}, {nama_stnk}, {nosin}, {noka}, {tipe}, {leasing}, {cabang}, {ovd}, {nomor_kontrak}, {contact_person}, {keterangan}, {user_name}, {user_contact}, {user_company}, {access_date}, {maps_url}.', style: TextStyle(fontFamily: 'monospace', color: Color(0xFF334155), fontWeight: FontWeight.bold)),
+                ]
+              )),
+            ]),
+            _buildCard('Syarat & Ketentuan Layanan', Icons.security_rounded, const Color(0xFF0EA5E9), 'KEBIJAKAN', [
+              _buildTextField('terms_conditions', '', maxLines: 8, hint: 'Masukkan teks syarat & ketentuan...'),
+            ]),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0EA5E9),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 4,
+                ),
+                onPressed: _submit,
+                icon: const Icon(Icons.cloud_upload_rounded),
+                label: const Text('SIMPAN PERUBAHAN SISTEM', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              ),
+            ),
+          ],
+        );
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+          child: isWide 
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 4, child: leftColumn),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 8, child: rightColumn),
+                ],
+              )
+            : Column(
+                children: [
+                  leftColumn,
+                  rightColumn,
+                ],
+              ),
+        );
+      }
     );
   }
 }

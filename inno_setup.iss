@@ -2,12 +2,12 @@
 ; Ganti AppId dengan GUID unik aplikasi Anda (generate GUID baru jika untuk aplikasi lain)
 AppId={{8B2F3A8A-5D1A-4C9D-9F2F-3F0D1E7B9C4A}}
 AppName=SuntikRadar
-AppVersion=0.1.9
+AppVersion=0.1.10
 AppPublisher=Lahaula
 DefaultDirName={autopf}\SuntikRadar
 DisableProgramGroupPage=yes
 OutputDir=build\installer
-OutputBaseFilename=SuntikRadar-Setup-v0.1.9
+OutputBaseFilename=SuntikRadar-Setup-v0.1.10
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

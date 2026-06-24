@@ -1,11 +1,12 @@
 class ResourceField {
   const ResourceField(this.key, this.label,
-      {this.required = false, this.password = false});
+      {this.required = false, this.password = false, this.image = false});
 
   final String key;
   final String label;
   final bool required;
   final bool password;
+  final bool image;
 }
 
 class ResourceConfig {
@@ -211,6 +212,7 @@ const resourceConfigs = <String, ResourceConfig>{
       ResourceField('footer_text', 'Footer'),
     ],
     fields: [
+      ResourceField('logo_path', 'Logo', image: true),
       ResourceField('app_name', 'App Name'),
       ResourceField('app_title', 'Title'),
       ResourceField('login_start', 'Login Mulai'),

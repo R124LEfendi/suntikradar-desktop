@@ -3,6 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/auth_controller.dart';
+import '../config/app_config.dart';
+import '../network/api_client.dart';
+
+final globalSettingsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  try {
+    final data = await ref.watch(apiClientProvider).get('/admin/website-settings');
+    return Map<String, dynamic>.from(data as Map);
+  } catch (_) {}
+  return const <String, dynamic>{};
+});
 
 class AdminShell extends ConsumerWidget {
   const AdminShell({super.key, required this.child});
@@ -54,15 +64,29 @@ class AdminShell extends ConsumerWidget {
   }
 }
 
-class _Sidebar extends StatelessWidget {
+class _Sidebar extends ConsumerWidget {
   const _Sidebar({required this.items, required this.compact});
 
   final List<_NavEntry> items;
   final bool compact;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
+    final settings = ref.watch(globalSettingsProvider).valueOrNull ?? {};
+
+    String? logoUrl;
+    if (settings['logo_path'] != null && settings['logo_path'].toString().isNotEmpty) {
+      final path = settings['logo_path'].toString();
+      if (path.startsWith('http')) {
+        logoUrl = path;
+      } else {
+        final apiUrl = AppConfig.apiBaseUrl;
+        final baseUrl = apiUrl.endsWith('/api') ? apiUrl.substring(0, apiUrl.length - 4) : apiUrl;
+        final cleanPath = path.startsWith('/') ? path : '/$path';
+        logoUrl = '$baseUrl$cleanPath';
+      }
+    }
 
     return Container(
       width: compact ? double.infinity : 282,
@@ -80,21 +104,23 @@ class _Sidebar extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: const Color(0xFFE0E7FF),
                       borderRadius: BorderRadius.circular(12)),
-                  child: Image.asset('assets/lahaula.png', fit: BoxFit.contain),
+                  child: logoUrl != null
+                      ? Image.network(logoUrl, fit: BoxFit.contain, errorBuilder: (_, __, ___) => Image.asset('assets/lahaula.png', fit: BoxFit.contain))
+                      : Image.asset('assets/lahaula.png', fit: BoxFit.contain),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Admin Console',
-                          style: TextStyle(
+                      Text(settings['app_name']?.toString() ?? 'Admin Console',
+                          style: const TextStyle(
                               color: Color(0xFF111827),
                               fontWeight: FontWeight.w900,
                               fontSize: 16)),
-                      SizedBox(height: 2),
-                      Text('Desktop Admin',
-                          style: TextStyle(
+                      const SizedBox(height: 2),
+                      Text(settings['app_title']?.toString() ?? 'Desktop Admin',
+                          style: const TextStyle(
                               color: Color(0xFF64748B), fontSize: 12)),
                     ],
                   ),
